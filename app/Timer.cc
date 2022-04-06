@@ -5,8 +5,9 @@ using namespace boost::asio;
 
 int main() {
   boost::asio::io_service io;
-  boost::asio::steady_timer timer(io, boost::asio::chrono::seconds(5));
-  timer.wait();
+
+  boost::asio::deadline_timer t(io, boost::posix_time::seconds(5));
+  t.wait();
   std::cout << "Hello, world!" << std::endl;
   return 0;
 }

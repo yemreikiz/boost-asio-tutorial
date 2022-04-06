@@ -1,0 +1,2 @@
+add_executable(ChatServer App_ChatServer.cc)
+target_link_libraries(ChatServer BoostAsioTutorial)

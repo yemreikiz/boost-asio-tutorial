@@ -1,0 +1,2 @@
+add_executable(ChatClient App_ChatClient.cc)
+target_link_libraries(ChatClient BoostAsioTutorial)

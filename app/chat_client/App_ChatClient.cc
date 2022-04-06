@@ -1,26 +1,22 @@
 #include "ChatClient.h"
 
-int main(int argc, char* argv[])
-{
-  try
-  {
-    if (argc != 3)
-    {
+int main(int argc, char* argv[]) {
+  try {
+    if (argc != 3) {
       std::cerr << "Usage: chat_client <host> <port>\n";
       return 1;
     }
 
-    boost::asio::io_context io_context;
+    boost::asio::io_service io_service;
 
-    tcp::resolver resolver(io_context);
-    auto endpoints = resolver.resolve(argv[1], argv[2]);
-    chat_client c(io_context, endpoints);
+    tcp::resolver resolver(io_service);
+    auto endpoint_iterator = resolver.resolve({argv[1], argv[2]});
+    chat_client c(io_service, endpoint_iterator);
 
-    std::thread t([&io_context](){ io_context.run(); });
+    std::thread t([&io_service]() { io_service.run(); });
 
     char line[chat_message::max_body_length + 1];
-    while (std::cin.getline(line, chat_message::max_body_length + 1))
-    {
+    while (std::cin.getline(line, chat_message::max_body_length + 1)) {
       chat_message msg;
       msg.body_length(std::strlen(line));
       std::memcpy(msg.body(), line, msg.body_length());
@@ -30,9 +26,7 @@ int main(int argc, char* argv[])
 
     c.close();
     t.join();
-  }
-  catch (std::exception& e)
-  {
+  } catch (std::exception& e) {
     std::cerr << "Exception: " << e.what() << "\n";
   }
 

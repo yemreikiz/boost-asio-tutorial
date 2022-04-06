@@ -3,23 +3,25 @@
 #include <iostream>
 
 void print(const boost::system::error_code& /*e*/,
-           boost::asio::steady_timer* t, int* count) {
+           boost::asio::deadline_timer* t, int* count) {
+  std::cout << *count << std::endl;
+  ++(*count);
   if (*count < 5) {
     std::cout << *count << std::endl;
     ++(*count);
 
-    t->expires_at(t->expiry() + boost::asio::chrono::seconds(1));
+    t->expires_at(t->expires_at() + boost::posix_time::seconds(1));
     t->async_wait(boost::bind(print,
                               boost::asio::placeholders::error, t, count));
   }
 }
 
 int main() {
-  boost::asio::io_context io;
+  boost::asio::io_service io;
   int count = 0;
-  boost::asio::steady_timer timer(io, boost::asio::chrono::seconds(1));
-  timer.async_wait(boost::bind(print,
-                               boost::asio::placeholders::error, &timer, &count));
+  boost::asio::deadline_timer t(io, boost::posix_time::seconds(1));
+  t.async_wait(boost::bind(print,
+                           boost::asio::placeholders::error, &t, &count));
 
   io.run();
 

@@ -1,111 +1,109 @@
-// //
-// // chat_client.cpp
-// // ~~~~~~~~~~~~~~~
-// //
-// // Copyright (c) 2003-2021 Christopher M. Kohlhoff (chris at kohlhoff dot com)
-// //
-// // Distributed under the Boost Software License, Version 1.0. (See accompanying
-// // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-// //
+//
+// chat_client.cpp
+// ~~~~~~~~~~~~~~~
+//
+// Copyright (c) 2003-2021 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//
 
-// #ifndef CHATCLIENT_H
-// #define CHATCLIENT_H
+#ifndef CHATCLIENT_H
+#define CHATCLIENT_H
 
-// #include <boost/asio.hpp>
-// #include <cstdlib>
-// #include <deque>
-// #include <iostream>
-// #include <thread>
+#include <boost/asio.hpp>
+#include <cstdlib>
+#include <deque>
+#include <iostream>
+#include <thread>
 
-// #include "ChatMessage.h"
+#include "ChatMessage.h"
 
-// using boost::asio::ip::tcp;
+using boost::asio::ip::tcp;
 
-// typedef std::deque<chat_message> chat_message_queue;
+typedef std::deque<chat_message> chat_message_queue;
 
-// class chat_client {
-//  public:
-//   chat_client(boost::asio::io_context& io_context,
-//               const tcp::resolver::results_type& endpoints)
-//       : io_context_(io_context),
-//         socket_(io_context) {
-//     do_connect(endpoints);
-//   }
+class chat_client {
+ public:
+  chat_client(boost::asio::io_service& io_service,
+              tcp::resolver::iterator endpoint_iterator)
+      : io_service_(io_service),
+        socket_(io_service) {
+    do_connect(endpoint_iterator);
+  }
 
-//   void write(const chat_message& msg) {
-//     boost::asio::post(io_context_,
-//                       [this, msg]() {
-//                         bool write_in_progress = !write_msgs_.empty();
-//                         write_msgs_.push_back(msg);
-//                         if (!write_in_progress) {
-//                           do_write();
-//                         }
-//                       });
-//   }
+  void write(const chat_message& msg) {
+    io_service_.post(
+        [this, msg]() {
+          bool write_in_progress = !write_msgs_.empty();
+          write_msgs_.push_back(msg);
+          if (!write_in_progress) {
+            do_write();
+          }
+        });
+  }
 
-//   void close() {
-//     boost::asio::post(io_context_, [this]() { socket_.close(); });
-//   }
+  void close() {
+    io_service_.post([this]() { socket_.close(); });
+  }
 
-//  private:
-//   void do_connect(const tcp::resolver::results_type& endpoints) {
-//     boost::asio::async_connect(socket_, endpoints,
-//                                [this](boost::system::error_code ec, tcp::endpoint ep) {
-//                                  if (!ec) {
-//                                    do_read_header();
-//                                  } else {
-//                                    std::cout << "Could not connect to the server at: " << ep.address() << ":" << ep.port() << std::endl;
-//                                  }
-//                                });
-//   }
+ private:
+  void do_connect(tcp::resolver::iterator endpoint_iterator) {
+    boost::asio::async_connect(socket_, endpoint_iterator,
+                               [this](boost::system::error_code ec, tcp::resolver::iterator) {
+                                 if (!ec) {
+                                   do_read_header();
+                                 }
+                               });
+  }
 
-//   void do_read_header() {
-//     boost::asio::async_read(socket_,
-//                             boost::asio::buffer(read_msg_.data(), chat_message::header_length),
-//                             [this](boost::system::error_code ec, std::size_t /*length*/) {
-//                               if (!ec && read_msg_.decode_header()) {
-//                                 do_read_body();
-//                               } else {
-//                                 socket_.close();
-//                               }
-//                             });
-//   }
+  void do_read_header() {
+    boost::asio::async_read(socket_,
+                            boost::asio::buffer(read_msg_.data(), chat_message::header_length),
+                            [this](boost::system::error_code ec, std::size_t /*length*/) {
+                              if (!ec && read_msg_.decode_header()) {
+                                do_read_body();
+                              } else {
+                                socket_.close();
+                              }
+                            });
+  }
 
-//   void do_read_body() {
-//     boost::asio::async_read(socket_,
-//                             boost::asio::buffer(read_msg_.body(), read_msg_.body_length()),
-//                             [this](boost::system::error_code ec, std::size_t /*length*/) {
-//                               if (!ec) {
-//                                 std::cout.write(read_msg_.body(), read_msg_.body_length());
-//                                 std::cout << "\n";
-//                                 do_read_header();
-//                               } else {
-//                                 socket_.close();
-//                               }
-//                             });
-//   }
+  void do_read_body() {
+    boost::asio::async_read(socket_,
+                            boost::asio::buffer(read_msg_.body(), read_msg_.body_length()),
+                            [this](boost::system::error_code ec, std::size_t /*length*/) {
+                              if (!ec) {
+                                std::cout.write(read_msg_.body(), read_msg_.body_length());
+                                std::cout << "\n";
+                                do_read_header();
+                              } else {
+                                socket_.close();
+                              }
+                            });
+  }
 
-//   void do_write() {
-//     boost::asio::async_write(socket_,
-//                              boost::asio::buffer(write_msgs_.front().data(),
-//                                                  write_msgs_.front().length()),
-//                              [this](boost::system::error_code ec, std::size_t /*length*/) {
-//                                if (!ec) {
-//                                  write_msgs_.pop_front();
-//                                  if (!write_msgs_.empty()) {
-//                                    do_write();
-//                                  }
-//                                } else {
-//                                  socket_.close();
-//                                }
-//                              });
-//   }
+  void do_write() {
+    boost::asio::async_write(socket_,
+                             boost::asio::buffer(write_msgs_.front().data(),
+                                                 write_msgs_.front().length()),
+                             [this](boost::system::error_code ec, std::size_t /*length*/) {
+                               if (!ec) {
+                                 write_msgs_.pop_front();
+                                 if (!write_msgs_.empty()) {
+                                   do_write();
+                                 }
+                               } else {
+                                 socket_.close();
+                               }
+                             });
+  }
 
-//  private:
-//   boost::asio::io_context& io_context_;
-//   tcp::socket socket_;
-//   chat_message read_msg_;
-//   chat_message_queue write_msgs_;
-// };
+ private:
+  boost::asio::io_service& io_service_;
+  tcp::socket socket_;
+  chat_message read_msg_;
+  chat_message_queue write_msgs_;
+};
 
-// #endif  // CHATCLIENT_H
+#endif  // CHATCLIENT_H

@@ -6,9 +6,10 @@ void print(const boost::system::error_code& /*e*/) {
 }
 
 int main() {
-  boost::asio::io_context io;
-  boost::asio::steady_timer timer(io, boost::asio::chrono::seconds(5));
-  timer.async_wait(&print);
+  boost::asio::io_service io;
+
+  boost::asio::deadline_timer t(io, boost::posix_time::seconds(5));
+  t.async_wait(&print);
   io.run();
   return 0;
 }
