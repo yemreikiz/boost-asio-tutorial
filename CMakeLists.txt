@@ -10,6 +10,13 @@ project(BoostAsioTutorial
 message(STATUS "***** PROJECT_NAME is ${PROJECT_NAME} *****")
 message(STATUS "***** " ${PROJECT_NAME} " version " ${PROJECT_VERSION} " *****")
 
+set(Boost_DEBUG ON)
+
 find_package(Boost COMPONENTS system thread filesystem REQUIRED)
 
+add_library(BoostAsioTutorial 
+  include/ChatClient.h
+  include/ChatServer.h
+  include/ChatMessage.h)
+target_link_libraries(BoostAsioTutorial ${Boost_LIBRARIES})
 add_subdirectory(app)
